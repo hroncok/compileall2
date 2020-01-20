@@ -384,6 +384,84 @@ class CompileallTestsBase:
         self.assertTrue(os.path.isfile(allowed_bc))
         self.assertFalse(os.path.isfile(prohibited_bc))
 
+    def test_hardlink_deduplication_bad_args(self):
+        with self.assertRaises(ValueError):
+            compileall.compile_dir(self.directory, quiet=True, optimize=0, hardlink_dupes=True)
+
+    def test_hardlink_deduplication_same_bytecode_all_opt(self):
+        """Same bytecode produced for all levels of optimization"""
+        path = os.path.join(self.directory, "test", "same_all")
+        os.makedirs(path)
+
+        simple_script = script_helper.make_script(path, "test_same_bytecode", "a = 0")
+        pyc_opt0 = importlib.util.cache_from_source(simple_script)
+        pyc_opt1 = importlib.util.cache_from_source(simple_script, optimization=1)
+        pyc_opt2 = importlib.util.cache_from_source(simple_script, optimization=2)
+
+        compileall.compile_dir(path, quiet=True, optimize=[0, 1, 2], hardlink_dupes=True)
+        self.assertTrue(os.stat(pyc_opt0).st_ino == os.stat(pyc_opt1).st_ino == os.stat(pyc_opt2).st_ino)
+
+        for pyc_file in pyc_opt0, pyc_opt1, pyc_opt2:
+            os.unlink(pyc_file)
+
+        compileall.compile_dir(path, quiet=True, optimize=[0, 1, 2], hardlink_dupes=False)
+        self.assertTrue(os.stat(pyc_opt0).st_ino != os.stat(pyc_opt1).st_ino != os.stat(pyc_opt2).st_ino)
+
+    def test_hardlink_deduplication_same_bytecode_some_opt(self):
+        """Same bytecode produced for some levels of optimization"""
+        path = os.path.join(self.directory, "test", "same_some")
+        os.makedirs(path)
+
+        simple_script = script_helper.make_script(path, "test_same_bytecode", "a = 0")
+        pyc_opt0 = importlib.util.cache_from_source(simple_script)
+        pyc_opt2 = importlib.util.cache_from_source(simple_script, optimization=2)
+
+        compileall.compile_dir(path, quiet=True, optimize=[0, 2], hardlink_dupes=True)
+        self.assertTrue(os.stat(pyc_opt0).st_ino ==  os.stat(pyc_opt2).st_ino)
+
+        for pyc_file in pyc_opt0, pyc_opt2:
+            os.unlink(pyc_file)
+
+        compileall.compile_dir(path, quiet=True, force=True, optimize=[0, 2], hardlink_dupes=False)
+        self.assertTrue(os.stat(pyc_opt0).st_ino !=  os.stat(pyc_opt2).st_ino)
+
+    def test_hardlink_deduplication_different_bytecode_all_opt(self):
+        """Different bytecode produced for all levels of optimization"""
+        path = os.path.join(self.directory, "test", "different_all")
+        os.makedirs(path)
+
+        simple_script = script_helper.make_script(path, "test_different_bytecode", "'''string'''\nassert 1")
+        pyc_opt0 = importlib.util.cache_from_source(simple_script)
+        pyc_opt1 = importlib.util.cache_from_source(simple_script, optimization=1)
+        pyc_opt2 = importlib.util.cache_from_source(simple_script, optimization=2)
+
+        compileall.compile_dir(path, quiet=True, optimize=[0, 1, 2], hardlink_dupes=True)
+        self.assertTrue(os.stat(pyc_opt0).st_ino != os.stat(pyc_opt1).st_ino != os.stat(pyc_opt2).st_ino)
+
+        for pyc_file in pyc_opt0, pyc_opt1, pyc_opt2:
+            os.unlink(pyc_file)
+
+        compileall.compile_dir(path, quiet=True, optimize=[0, 1, 2], hardlink_dupes=False)
+        self.assertTrue(os.stat(pyc_opt0).st_ino != os.stat(pyc_opt1).st_ino != os.stat(pyc_opt2).st_ino)
+
+    def test_hardlink_deduplication_different_bytecode_one_hardlink(self):
+        """Different bytecode produced for some levels of optimization"""
+        path = os.path.join(self.directory, "test", "different_one")
+        os.makedirs(path)
+
+        simple_script = script_helper.make_script(path, "test_different_bytecode", "'''string'''\na = 1")
+        pyc_opt0 = importlib.util.cache_from_source(simple_script)
+        pyc_opt1 = importlib.util.cache_from_source(simple_script, optimization=1)
+        pyc_opt2 = importlib.util.cache_from_source(simple_script, optimization=2)
+
+        compileall.compile_dir(path, quiet=True, optimize=[0, 1, 2], hardlink_dupes=True)
+        self.assertTrue(os.stat(pyc_opt0).st_ino == os.stat(pyc_opt1).st_ino != os.stat(pyc_opt2).st_ino)
+
+        for pyc_file in pyc_opt0, pyc_opt1, pyc_opt2:
+            os.unlink(pyc_file)
+
+        compileall.compile_dir(path, quiet=True, optimize=[0, 1, 2], hardlink_dupes=False)
+        self.assertTrue(os.stat(pyc_opt0).st_ino != os.stat(pyc_opt1).st_ino != os.stat(pyc_opt2).st_ino)
 
 class CompileallTestsWithSourceEpoch(CompileallTestsBase,
                                      unittest.TestCase,
@@ -876,6 +954,84 @@ class CommandLineTestsBase:
         self.assertTrue(os.path.isfile(allowed_bc))
         self.assertFalse(os.path.isfile(prohibited_bc))
 
+    def test_hardlink_deduplication_bad_args(self):
+        self.assertRunNotOK(self.directory, "-o 1", "--hardlink_dupes")
+
+    def test_hardlink_deduplication_same_bytecode_all_opt(self):
+        """Same bytecode produced for all levels of optimization"""
+        path = os.path.join(self.directory, "test", "same_all")
+        os.makedirs(path)
+
+        simple_script = script_helper.make_script(path, "test_same_bytecode", "a = 0")
+        pyc_opt0 = importlib.util.cache_from_source(simple_script)
+        pyc_opt1 = importlib.util.cache_from_source(simple_script, optimization=1)
+        pyc_opt2 = importlib.util.cache_from_source(simple_script, optimization=2)
+
+        self.assertRunOK(path, "-q", "-o 0", "-o 1", "-o 2", "--hardlink-dupes")
+        self.assertTrue(os.stat(pyc_opt0).st_ino == os.stat(pyc_opt1).st_ino == os.stat(pyc_opt2).st_ino)
+
+        for pyc_file in pyc_opt0, pyc_opt1, pyc_opt2:
+            os.unlink(pyc_file)
+
+        self.assertRunOK(path, "-q", "-o 0", "-o 1", "-o 2")
+        self.assertTrue(os.stat(pyc_opt0).st_ino != os.stat(pyc_opt1).st_ino != os.stat(pyc_opt2).st_ino)
+
+    def test_hardlink_deduplication_same_bytecode_some_opt(self):
+        """Same bytecode produced for some levels of optimization"""
+        path = os.path.join(self.directory, "test", "same_some")
+        os.makedirs(path)
+
+        simple_script = script_helper.make_script(path, "test_same_bytecode", "a = 0")
+        pyc_opt0 = importlib.util.cache_from_source(simple_script)
+        pyc_opt2 = importlib.util.cache_from_source(simple_script, optimization=2)
+
+        self.assertRunOK(path, "-q", "-o 0", "-o 2", "--hardlink-dupes")
+        compileall.compile_dir(path, quiet=True, optimize=[0, 2], hardlink_dupes=True)
+        self.assertTrue(os.stat(pyc_opt0).st_ino ==  os.stat(pyc_opt2).st_ino)
+
+        for pyc_file in pyc_opt0, pyc_opt2:
+            os.unlink(pyc_file)
+
+        self.assertRunOK(path, "-q", "-o 0", "-o 2")
+        self.assertTrue(os.stat(pyc_opt0).st_ino !=  os.stat(pyc_opt2).st_ino)
+
+    def test_hardlink_deduplication_different_bytecode_all_opt(self):
+        """Different bytecode produced for all levels of optimization"""
+        path = os.path.join(self.directory, "test", "different_all")
+        os.makedirs(path)
+
+        simple_script = script_helper.make_script(path, "test_different_bytecode", "'''string'''\nassert 1")
+        pyc_opt0 = importlib.util.cache_from_source(simple_script)
+        pyc_opt1 = importlib.util.cache_from_source(simple_script, optimization=1)
+        pyc_opt2 = importlib.util.cache_from_source(simple_script, optimization=2)
+
+        self.assertRunOK(path, "-q", "-o 0", "-o 1", "-o 2", "--hardlink-dupes")
+        self.assertTrue(os.stat(pyc_opt0).st_ino != os.stat(pyc_opt1).st_ino != os.stat(pyc_opt2).st_ino)
+
+        for pyc_file in pyc_opt0, pyc_opt1, pyc_opt2:
+            os.unlink(pyc_file)
+
+        self.assertRunOK(path, "-q", "-o 0", "-o 1", "-o 2")
+        self.assertTrue(os.stat(pyc_opt0).st_ino != os.stat(pyc_opt1).st_ino != os.stat(pyc_opt2).st_ino)
+
+    def test_hardlink_deduplication_different_bytecode_one_hardlink(self):
+        """Different bytecode produced for some levels of optimization"""
+        path = os.path.join(self.directory, "test", "different_one")
+        os.makedirs(path)
+
+        simple_script = script_helper.make_script(path, "test_different_bytecode", "'''string'''\na = 1")
+        pyc_opt0 = importlib.util.cache_from_source(simple_script)
+        pyc_opt1 = importlib.util.cache_from_source(simple_script, optimization=1)
+        pyc_opt2 = importlib.util.cache_from_source(simple_script, optimization=2)
+
+        self.assertRunOK(path, "-q", "-o 0", "-o 1", "-o 2", "--hardlink-dupes")
+        self.assertTrue(os.stat(pyc_opt0).st_ino == os.stat(pyc_opt1).st_ino != os.stat(pyc_opt2).st_ino)
+
+        for pyc_file in pyc_opt0, pyc_opt1, pyc_opt2:
+            os.unlink(pyc_file)
+
+        self.assertRunOK(path, "-q", "-o 0", "-o 1", "-o 2")
+        self.assertTrue(os.stat(pyc_opt0).st_ino != os.stat(pyc_opt1).st_ino != os.stat(pyc_opt2).st_ino)
 
 class CommmandLineTestsWithSourceEpoch(CommandLineTestsBase,
                                        unittest.TestCase,
