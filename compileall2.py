@@ -276,7 +276,7 @@ def compile_file(fullname, ddir=None, force=False, rx=None, quiet=0,
                     
                     if index > 0 and hardlink_dupes:
                         previous_cfile = opt_cfiles[optimize[index - 1]]
-                        if  filecmp.cmp(cfile, previous_cfile):
+                        if  filecmp.cmp(cfile, previous_cfile, shallow=False):
                             os.unlink(cfile)
                             os.link(previous_cfile, cfile)
 
