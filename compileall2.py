@@ -275,10 +275,18 @@ def compile_file(fullname, ddir=None, force=False, rx=None, quiet=0,
                                                 optimize=opt_level)
                     
                     if index > 0 and hardlink_dupes:
-                        previous_cfile = opt_cfiles[optimize[index - 1]]
-                        if  filecmp.cmp(cfile, previous_cfile, shallow=False):
-                            os.unlink(cfile)
-                            os.link(previous_cfile, cfile)
+                        if PY35:
+                            # Python 3.4 produces only one .pyo file
+                            previous_cfile = opt_cfiles[optimize[index - 1]]
+                        else:
+                            previous_cfile = opt_cfiles[optimize[0]]
+                        try:
+                            if  filecmp.cmp(cfile, previous_cfile, shallow=False):
+                                os.unlink(cfile)
+                                os.link(previous_cfile, cfile)
+                        except OSError:
+                            # We cannot use hardlink deduplication
+                            pass
 
             except py_compile.PyCompileError as err:
                 success = False
@@ -400,7 +408,7 @@ def main():
                               'Python interpreter itself (specified by -O).'))
     parser.add_argument('-e', metavar='DIR', dest='limit_sl_dest',
                         help='Ignore symlinks pointing outsite of the DIR')
-    parser.add_argument('-hd', '--hardlink-dupes', action='store_true',
+    parser.add_argument('--hardlink-dupes', action='store_true',
                         dest='hardlink_dupes',
                         help='Hardlink duplicated pyc files')
 
