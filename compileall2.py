@@ -275,13 +275,14 @@ def compile_file(fullname, ddir=None, force=False, rx=None, quiet=0,
                                                 optimize=opt_level)
                     
                     if index > 0 and hardlink_dupes:
-                        if PY35:
-                            # Python 3.4 produces only one .pyo file
-                            previous_cfile = opt_cfiles[optimize[index - 1]]
-                        else:
+                        previous_cfile = opt_cfiles[optimize[index - 1]]
+                        if previous_cfile == cfile and optimize[0] not in (1, 2):
+                            # Python 3.4 has only one .pyo file for -O and -OO so
+                            # we hardlink it only if there is a .pyc file
+                            # with the same content
                             previous_cfile = opt_cfiles[optimize[0]]
                         try:
-                            if  filecmp.cmp(cfile, previous_cfile, shallow=False):
+                            if  previous_cfile != cfile and filecmp.cmp(cfile, previous_cfile, shallow=False):
                                 os.unlink(cfile)
                                 os.link(previous_cfile, cfile)
                         except OSError:

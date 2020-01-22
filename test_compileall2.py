@@ -428,7 +428,6 @@ class CompileallTestsBase:
     def test_hardlink_deduplication_same_bytecode_some_opt(self):
         # 'a = 0' produces the same bytecode for all optimization levels
         # only two levels of optimization [0, 1] tested
-        """Same bytecode produced for some levels of optimization"""
         path = os.path.join(self.directory, "test", "same_some")
         os.makedirs(path)
 
@@ -451,6 +450,38 @@ class CompileallTestsBase:
         
         # Deduplication disabled, both pyc files should have different inodes
         self.assertNotEqual(os.stat(pyc_opt0).st_ino, os.stat(pyc_opt2).st_ino)
+
+    def test_hardlink_deduplication_same_bytecode_some_opt_2(self):
+        # 'a = 0' produces the same bytecode for all optimization levels
+        path = os.path.join(self.directory, "test", "same_some_2")
+        os.makedirs(path)
+
+        simple_script = script_helper.make_script(path, "test_same_bytecode", "a = 0")
+        pyc_opt1 = importlib.util.cache_from_source(
+            simple_script,
+            **compileall.optimization_kwarg(1)
+        )
+        pyc_opt2 = importlib.util.cache_from_source(
+            simple_script,
+            **compileall.optimization_kwarg(2)
+        )
+
+        compileall.compile_dir(path, quiet=True, optimize=[1, 2], hardlink_dupes=True)
+
+        # All three files should have the same inode (hardlinks)
+        self.assertEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
+
+        for pyc_file in set((pyc_opt1, pyc_opt2)):
+            os.unlink(pyc_file)
+
+        compileall.compile_dir(path, quiet=True, optimize=[1, 2])
+
+        # Deduplication disabled, all pyc files should have different inodes
+        if compileall.PY35:
+            # Python 3.4 produces the same file for opt1 and opt2
+            self.assertNotEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
+        else:
+            self.assertEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
 
     def test_hardlink_deduplication_different_bytecode_all_opt(self):
         # "'''string'''\nassert 1" produces a different bytecode for all optimization levels
@@ -1039,8 +1070,6 @@ class CommandLineTestsBase:
 
         self.assertRunOK(path, "-q", "-o 0", "-o 1", "-o 2", "--hardlink-dupes")
 
-        compileall.compile_dir(path, quiet=True, optimize=[0, 1, 2], hardlink_dupes=True)
-
         # All three files should have the same inode (hardlinks)
         self.assertEqual(os.stat(pyc_opt0).st_ino, os.stat(pyc_opt1).st_ino)
         self.assertEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
@@ -1081,6 +1110,38 @@ class CommandLineTestsBase:
         
         # Deduplication disabled, both pyc files should have different inodes
         self.assertNotEqual(os.stat(pyc_opt0).st_ino, os.stat(pyc_opt2).st_ino)
+
+    def test_hardlink_deduplication_same_bytecode_some_opt_2(self):
+        # 'a = 0' produces the same bytecode for all optimization levels
+        path = os.path.join(self.directory, "test", "same_some_2")
+        os.makedirs(path)
+
+        simple_script = script_helper.make_script(path, "test_same_bytecode", "a = 0")
+        pyc_opt1 = importlib.util.cache_from_source(
+            simple_script,
+            **compileall.optimization_kwarg(1)
+        )
+        pyc_opt2 = importlib.util.cache_from_source(
+            simple_script,
+            **compileall.optimization_kwarg(2)
+        )
+
+        self.assertRunOK(path, "-q", "-o 1", "-o 2", "--hardlink-dupes")
+
+        # All three files should have the same inode (hardlinks)
+        self.assertEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
+
+        for pyc_file in set((pyc_opt1, pyc_opt2)):
+            os.unlink(pyc_file)
+
+        self.assertRunOK(path, "-q", "-o 1", "-o 2")
+
+        # Deduplication disabled, all pyc files should have different inodes
+        if compileall.PY35:
+            # Python 3.4 produces the same file for opt1 and opt2
+            self.assertNotEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
+        else:
+            self.assertEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
 
     def test_hardlink_deduplication_different_bytecode_all_opt(self):
         # "'''string'''\nassert 1" produces a different bytecode for all optimization levels
