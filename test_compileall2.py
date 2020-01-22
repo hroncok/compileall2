@@ -414,12 +414,8 @@ class CompileallTestsBase:
         self.assertEqual(os.stat(pyc_opt0).st_ino, os.stat(pyc_opt1).st_ino)
         self.assertEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
 
-        for pyc_file in pyc_opt0, pyc_opt1, pyc_opt2:
-            try:
-                os.unlink(pyc_file)
-            except OSError:
-                # Python <= 3.4 does not create all the files
-                pass
+        for pyc_file in set((pyc_opt0, pyc_opt1, pyc_opt2)):
+            os.unlink(pyc_file)
 
         compileall.compile_dir(path, quiet=True, optimize=[0, 1, 2], hardlink_dupes=False)
 
@@ -448,12 +444,8 @@ class CompileallTestsBase:
         # Both files should have the same inode (hardlink)
         self.assertEqual(os.stat(pyc_opt0).st_ino,  os.stat(pyc_opt2).st_ino)
 
-        for pyc_file in pyc_opt0, pyc_opt2:
-            try:
-                os.unlink(pyc_file)
-            except OSError:
-                # Python <= 3.4 does not create all the files
-                pass
+        for pyc_file in set((pyc_opt0, pyc_opt2)):
+            os.unlink(pyc_file)
 
         compileall.compile_dir(path, quiet=True, force=True, optimize=[0, 2], hardlink_dupes=False)
         
@@ -484,12 +476,8 @@ class CompileallTestsBase:
             # Python 3.4 produces the same file for opt1 and opt2
             self.assertNotEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
 
-        for pyc_file in pyc_opt0, pyc_opt1, pyc_opt2:
-            try:
-                os.unlink(pyc_file)
-            except OSError:
-                # Python <= 3.4 does not create all the files
-                pass
+        for pyc_file in set((pyc_opt0, pyc_opt1, pyc_opt2)):
+            os.unlink(pyc_file)
 
         compileall.compile_dir(path, quiet=True, optimize=[0, 1, 2], hardlink_dupes=False)
 
@@ -525,12 +513,8 @@ class CompileallTestsBase:
         else:
             self.assertNotEqual(os.stat(pyc_opt0).st_ino, os.stat(pyc_opt1).st_ino)
 
-        for pyc_file in pyc_opt0, pyc_opt1, pyc_opt2:
-            try:
-                os.unlink(pyc_file)
-            except OSError:
-                # Python <= 3.4 does not create all the files
-                pass
+        for pyc_file in set((pyc_opt0, pyc_opt1, pyc_opt2)):
+            os.unlink(pyc_file)
 
         compileall.compile_dir(path, quiet=True, optimize=[0, 1, 2], hardlink_dupes=False)
 
@@ -1061,12 +1045,8 @@ class CommandLineTestsBase:
         self.assertEqual(os.stat(pyc_opt0).st_ino, os.stat(pyc_opt1).st_ino)
         self.assertEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
 
-        for pyc_file in pyc_opt0, pyc_opt1, pyc_opt2:
-            try:
-                os.unlink(pyc_file)
-            except OSError:
-                # Python <= 3.4 does not create all the files
-                pass
+        for pyc_file in set((pyc_opt0, pyc_opt1, pyc_opt2)):
+            os.unlink(pyc_file)
 
         self.assertRunOK(path, "-q", "-o 0", "-o 1", "-o 2")
 
@@ -1094,12 +1074,8 @@ class CommandLineTestsBase:
         # Both files should have the same inode (hardlink)
         self.assertEqual(os.stat(pyc_opt0).st_ino,  os.stat(pyc_opt2).st_ino)
 
-        for pyc_file in pyc_opt0, pyc_opt2:
-            try:
-                os.unlink(pyc_file)
-            except OSError:
-                # Python <= 3.4 does not create all the files
-                pass
+        for pyc_file in set((pyc_opt0, pyc_opt2)):
+            os.unlink(pyc_file)
 
         self.assertRunOK(path, "-q", "-o 0", "-o 2")
         
@@ -1130,12 +1106,8 @@ class CommandLineTestsBase:
             # Python 3.4 produces the same file for opt1 and opt2
             self.assertNotEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
 
-        for pyc_file in pyc_opt0, pyc_opt1, pyc_opt2:
-            try:
-                os.unlink(pyc_file)
-            except OSError:
-                # Python <= 3.4 does not create all the files
-                pass
+        for pyc_file in set((pyc_opt0, pyc_opt1, pyc_opt2)):
+            os.unlink(pyc_file)
 
         self.assertRunOK(path, "-q", "-o 0", "-o 1", "-o 2")
 
@@ -1171,12 +1143,8 @@ class CommandLineTestsBase:
         else:
             self.assertNotEqual(os.stat(pyc_opt0).st_ino, os.stat(pyc_opt1).st_ino)
 
-        for pyc_file in pyc_opt0, pyc_opt1, pyc_opt2:
-            try:
-                os.unlink(pyc_file)
-            except OSError:
-                # Python <= 3.4 does not create all the files
-                pass
+        for pyc_file in set((pyc_opt0, pyc_opt1, pyc_opt2)):
+            os.unlink(pyc_file)
 
         self.assertRunOK(path, "-q", "-o 0", "-o 1", "-o 2")
 
