@@ -468,7 +468,7 @@ class CompileallTestsBase:
 
         compileall.compile_dir(path, quiet=True, optimize=[1, 2], hardlink_dupes=True)
 
-        # All three files should have the same inode (hardlinks)
+        # Both files should have the same inode (hardlinks)
         self.assertEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
 
         for pyc_file in {pyc_opt1, pyc_opt2}:
@@ -1128,7 +1128,7 @@ class CommandLineTestsBase:
 
         self.assertRunOK(path, "-q", "-o 1", "-o 2", "--hardlink-dupes")
 
-        # All three files should have the same inode (hardlinks)
+        # Both files should have the same inode (hardlinks)
         self.assertEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
 
         for pyc_file in {pyc_opt1, pyc_opt2}:
