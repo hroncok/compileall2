@@ -12,6 +12,7 @@ import time
 import unittest
 import io
 import functools
+import filecmp
 
 from unittest import mock, skipUnless
 try:
@@ -554,6 +555,44 @@ class CompileallTestsBase:
         if compileall.PY35:
             # Python 3.4 produces the same file for opt1 and opt2
             self.assertNotEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
+
+    def test_hardlink_deduplication_recompilation(self):
+        path = os.path.join(self.directory, "test", "module_change")
+        os.makedirs(path)
+
+        simple_script = script_helper.make_script(path, "module_change", "a = 0")
+        pyc_opt0 = importlib.util.cache_from_source(simple_script)
+        pyc_opt1 = importlib.util.cache_from_source(
+            simple_script,
+            **compileall.optimization_kwarg(1)
+        )
+        pyc_opt2 = importlib.util.cache_from_source(
+            simple_script,
+            **compileall.optimization_kwarg(2)
+        )
+
+        compileall.compile_dir(path, quiet=True, optimize=[0, 1, 2], hardlink_dupes=True)
+
+        # All three levels have the same inode
+        self.assertEqual(os.stat(pyc_opt0).st_ino, os.stat(pyc_opt1).st_ino)
+        self.assertEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
+
+        previous_inode = os.stat(pyc_opt0).st_ino
+
+        # Change of the module content
+        simple_script = script_helper.make_script(path, "module_change", "print(0)")
+
+        # Recompilation without -o 1
+        compileall.compile_dir(path, force=True, quiet=True, optimize=[0, 2], hardlink_dupes=True)
+
+        # opt-1.pyc should have the same inode as before and others should not
+        if compileall.PY35:
+            self.assertEqual(previous_inode, os.stat(pyc_opt1).st_ino)
+        self.assertEqual(os.stat(pyc_opt0).st_ino, os.stat(pyc_opt2).st_ino)
+        self.assertNotEqual(previous_inode, os.stat(pyc_opt2).st_ino)
+        # opt-1.pyc and opt-2.pyc have different content
+        if compileall.PY35:
+            self.assertFalse(filecmp.cmp(pyc_opt1, pyc_opt2, shallow=True))
 
 
 class CompileallTestsWithSourceEpoch(CompileallTestsBase,
@@ -1215,6 +1254,43 @@ class CommandLineTestsBase:
             # Python 3.4 produces the same file for opt1 and opt2
             self.assertNotEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
 
+    def test_hardlink_deduplication_recompilation(self):
+        path = os.path.join(self.directory, "test", "module_change")
+        os.makedirs(path)
+
+        simple_script = script_helper.make_script(path, "module_change", "a = 0")
+        pyc_opt0 = importlib.util.cache_from_source(simple_script)
+        pyc_opt1 = importlib.util.cache_from_source(
+            simple_script,
+            **compileall.optimization_kwarg(1)
+        )
+        pyc_opt2 = importlib.util.cache_from_source(
+            simple_script,
+            **compileall.optimization_kwarg(2)
+        )
+
+        self.assertRunOK(path, "-f", "-q", "-o 0", "-o 1", "-o 2", "--hardlink-dupes")
+
+        # All three levels have the same inode
+        self.assertEqual(os.stat(pyc_opt0).st_ino, os.stat(pyc_opt1).st_ino)
+        self.assertEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
+
+        previous_inode = os.stat(pyc_opt0).st_ino
+
+        # Change of the module content
+        simple_script = script_helper.make_script(path, "module_change", "print(0)")
+
+        # Recompilation without -o 1
+        self.assertRunOK(path, "-f", "-q", "-o 0", "-o 2", "--hardlink-dupes")
+
+        # opt-1.pyc should have the same inode as before and others should not
+        if compileall.PY35:
+            self.assertEqual(previous_inode, os.stat(pyc_opt1).st_ino)
+        self.assertEqual(os.stat(pyc_opt0).st_ino, os.stat(pyc_opt2).st_ino)
+        self.assertNotEqual(previous_inode, os.stat(pyc_opt2).st_ino)
+        # opt-1.pyc and opt-2.pyc have different content
+        if compileall.PY35:
+            self.assertFalse(filecmp.cmp(pyc_opt1, pyc_opt2, shallow=True))
 
 class CommmandLineTestsWithSourceEpoch(CommandLineTestsBase,
                                        unittest.TestCase,
