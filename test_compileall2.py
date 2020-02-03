@@ -594,6 +594,45 @@ class CompileallTestsBase:
         if compileall.PY35:
             self.assertFalse(filecmp.cmp(pyc_opt1, pyc_opt2, shallow=True))
 
+    def test_hardlink_deduplication_import(self):
+        path = os.path.join(self.directory, "test", "module_import")
+        os.makedirs(path)
+
+        simple_script = script_helper.make_script(path, "module", "a = 0")
+        pyc_opt0 = importlib.util.cache_from_source(simple_script)
+        pyc_opt1 = importlib.util.cache_from_source(
+            simple_script,
+            **compileall.optimization_kwarg(1)
+        )
+        pyc_opt2 = importlib.util.cache_from_source(
+            simple_script,
+            **compileall.optimization_kwarg(2)
+        )
+
+        compileall.compile_dir(path, quiet=True, optimize=[0, 1, 2], hardlink_dupes=True)
+
+        # All three levels have the same inode
+        self.assertEqual(os.stat(pyc_opt0).st_ino, os.stat(pyc_opt1).st_ino)
+        self.assertEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
+
+        previous_inode = os.stat(pyc_opt0).st_ino
+
+        # Change of the module content
+        simple_script = script_helper.make_script(path, "module", "print(0)")
+
+        # Import the module in Python
+        script_helper.assert_python_ok(
+            "-O", "-c", "import module", __isolated=False, PYTHONPATH=path
+        )
+
+        # Only opt-1.pyc is changed
+        self.assertEqual(previous_inode, os.stat(pyc_opt0).st_ino)
+        if compileall.PY35:
+            self.assertEqual(previous_inode, os.stat(pyc_opt2).st_ino)
+            self.assertNotEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
+        # opt-1.pyc and opt-2.pyc have different content
+        if compileall.PY35:
+            self.assertFalse(filecmp.cmp(pyc_opt1, pyc_opt2, shallow=True))
 
 class CompileallTestsWithSourceEpoch(CompileallTestsBase,
                                      unittest.TestCase,
@@ -1288,6 +1327,46 @@ class CommandLineTestsBase:
             self.assertEqual(previous_inode, os.stat(pyc_opt1).st_ino)
         self.assertEqual(os.stat(pyc_opt0).st_ino, os.stat(pyc_opt2).st_ino)
         self.assertNotEqual(previous_inode, os.stat(pyc_opt2).st_ino)
+        # opt-1.pyc and opt-2.pyc have different content
+        if compileall.PY35:
+            self.assertFalse(filecmp.cmp(pyc_opt1, pyc_opt2, shallow=True))
+
+    def test_hardlink_deduplication_import(self):
+        path = os.path.join(self.directory, "test", "module_import")
+        os.makedirs(path)
+
+        simple_script = script_helper.make_script(path, "module", "a = 0")
+        pyc_opt0 = importlib.util.cache_from_source(simple_script)
+        pyc_opt1 = importlib.util.cache_from_source(
+            simple_script,
+            **compileall.optimization_kwarg(1)
+        )
+        pyc_opt2 = importlib.util.cache_from_source(
+            simple_script,
+            **compileall.optimization_kwarg(2)
+        )
+
+        self.assertRunOK(path, "-f", "-q", "-o 0", "-o 1", "-o 2", "--hardlink-dupes")
+
+        # All three levels have the same inode
+        self.assertEqual(os.stat(pyc_opt0).st_ino, os.stat(pyc_opt1).st_ino)
+        self.assertEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
+
+        previous_inode = os.stat(pyc_opt0).st_ino
+
+        # Change of the module content
+        simple_script = script_helper.make_script(path, "module", "print(0)")
+
+        # Import the module in Python
+        script_helper.assert_python_ok(
+            "-O", "-c", "import module", __isolated=False, PYTHONPATH=path
+        )
+
+        # Only opt-1.pyc is changed
+        self.assertEqual(previous_inode, os.stat(pyc_opt0).st_ino)
+        if compileall.PY35:
+            self.assertEqual(previous_inode, os.stat(pyc_opt2).st_ino)
+            self.assertNotEqual(os.stat(pyc_opt1).st_ino, os.stat(pyc_opt2).st_ino)
         # opt-1.pyc and opt-2.pyc have different content
         if compileall.PY35:
             self.assertFalse(filecmp.cmp(pyc_opt1, pyc_opt2, shallow=True))
