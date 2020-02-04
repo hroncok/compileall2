@@ -442,7 +442,7 @@ def main():
         args.opt_levels = [-1]
 
     if len(args.opt_levels) == 1 and args.hardlink_dupes:
-        parser.error(("Hardlinking of duplicated bytecode make sense "
+        parser.error(("Hardlinking of duplicated bytecode makes sense "
                       "only for more than one optimization level."))
 
     if args.ddir is not None and (
