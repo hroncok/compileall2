@@ -217,7 +217,7 @@ def compile_file(fullname, ddir=None, force=False, rx=None, quiet=0,
         optimize = [optimize]
 
         if hardlink_dupes:
-            raise ValueError(("Hardlinking of duplicated bytecode make sense "
+            raise ValueError(("Hardlinking of duplicated bytecode makes sense "
                               "only for more than one optimization level."))
 
     if rx is not None:
