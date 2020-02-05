@@ -281,13 +281,9 @@ def compile_file(fullname, ddir=None, force=False, rx=None, quiet=0,
                             # we hardlink it only if there is a .pyc file
                             # with the same content
                             previous_cfile = opt_cfiles[optimize[0]]
-                        try:
-                            if  previous_cfile != cfile and filecmp.cmp(cfile, previous_cfile, shallow=False):
-                                os.unlink(cfile)
-                                os.link(previous_cfile, cfile)
-                        except OSError:
-                            # We cannot use hardlink deduplication
-                            pass
+                        if  previous_cfile != cfile and filecmp.cmp(cfile, previous_cfile, shallow=False):
+                            os.unlink(cfile)
+                            os.link(previous_cfile, cfile)
 
             except py_compile.PyCompileError as err:
                 success = False
